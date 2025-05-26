@@ -21,10 +21,10 @@ export default function ContributorChart({ data, height = 300 }: ContributorChar
   // Take top 10 contributors
   const topContributors = data.slice(0, 10);
 
-  const formatTooltip = (value: number, name: string, props: any) => {
+  const formatTooltip = (value: number, name: string, props: { payload?: { login?: string } }) => {
     return [
       `${value} contributions`,
-      props.payload.login
+      props.payload?.login || 'Unknown'
     ];
   };
 

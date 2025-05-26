@@ -346,7 +346,7 @@ export class GitHubService {
             per_page: 1
           }),
           timeoutPromise
-        ]) as any;
+        ]) as { data: any[]; headers: { link?: string } };
         
         // GitHub returns the total count in the Link header for pagination
         const linkHeader = contributorsResponse.headers.link;
@@ -372,10 +372,10 @@ export class GitHubService {
               }
             }`,
             { owner, name }
-          ) as any;
+          ) as { repository?: { mentionableUsers?: { totalCount: number } } };
           
           contributorsCount = contributorsGraphQL.repository?.mentionableUsers?.totalCount || 0;
-        } catch (graphqlError) {
+        } catch {
           console.warn('GraphQL contributors fallback also failed, defaulting to 0');
           contributorsCount = 0; // Final fallback
         }
@@ -646,7 +646,7 @@ export class GitHubService {
       })).sort((a, b) => b.bytes - a.bytes);
 
       // Try to get package.json for dependencies (if it's a Node.js project)
-      let dependencies: Array<{ name: string; version: string; type: 'dependency' | 'devDependency' }> = [];
+      const dependencies: Array<{ name: string; version: string; type: 'dependency' | 'devDependency' }> = [];
       try {
         const packageJson = await restClient.repos.getContent({
           owner,
@@ -669,7 +669,7 @@ export class GitHubService {
             });
           }
         }
-      } catch (error) {
+      } catch {
         // package.json not found or not accessible
       }
 
@@ -1166,7 +1166,7 @@ export class GitHubService {
 
           weekData.additions += commitDetails.data.stats?.additions || 0;
           weekData.deletions += commitDetails.data.stats?.deletions || 0;
-        } catch (error) {
+        } catch {
           // Skip if we can't get commit details
         }
       }
@@ -1216,7 +1216,7 @@ function getLanguageColor(language: string): string {
   return colors[language] || '#8884d8';
 }
 
-function detectFrameworks(languages: any[], dependencies: any[]): string[] {
+function detectFrameworks(languages: Array<{ name: string }>, dependencies: Array<{ name: string }>): string[] {
   const frameworks = new Set<string>();
   
   // Detect based on dependencies

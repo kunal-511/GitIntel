@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GitHubService } from '@/lib/github';
+import { GitHubService, Repository } from '@/lib/github';
 
 export async function GET(request: NextRequest) {
   try {
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function calculateSimilarity(target: any, competitor: any): number {
+function calculateSimilarity(target: Repository, competitor: Repository): number {
   let score = 0;
   
   // Language match (high weight)
@@ -131,7 +131,7 @@ function calculateSimilarity(target: any, competitor: any): number {
   return Math.round(score);
 }
 
-function getLanguageDistribution(repos: any[]) {
+function getLanguageDistribution(repos: Repository[]) {
   const distribution: Record<string, number> = {};
   repos.forEach(repo => {
     if (repo.language) {
@@ -141,7 +141,7 @@ function getLanguageDistribution(repos: any[]) {
   return distribution;
 }
 
-function getCompetitivePosition(target: any, competitors: any[]) {
+function getCompetitivePosition(target: Repository, competitors: Repository[]) {
   const targetStars = target.stargazerCount;
   const betterThan = competitors.filter(repo => targetStars > repo.stargazerCount).length;
   const total = competitors.length;

@@ -21,7 +21,14 @@ export default function LanguageChart({ data, height = 300 }: LanguageChartProps
   
   const renderCustomizedLabel = ({
     cx, cy, midAngle, innerRadius, outerRadius, percent
-  }: any) => {
+  }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    percent: number;
+  }) => {
     if (percent < 0.05) return null; // Don't show labels for very small slices
     
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -43,8 +50,8 @@ export default function LanguageChart({ data, height = 300 }: LanguageChartProps
     );
   };
 
-  const formatTooltip = (value: number, name: string, props: any) => {
-    return [`${props.payload.percentage}%`, name];
+  const formatTooltip = (value: number, name: string, props: { payload?: { percentage?: number } }) => {
+    return [`${props.payload?.percentage || 0}%`, name];
   };
 
   return (
@@ -78,7 +85,7 @@ export default function LanguageChart({ data, height = 300 }: LanguageChartProps
           wrapperStyle={{ color: '#F3F4F6' }}
           formatter={(value, entry: any) => (
             <span style={{ color: entry.color }}>
-              {value} ({entry.payload.percentage}%)
+              {value} ({entry.payload?.percentage || 0}%)
             </span>
           )}
         />

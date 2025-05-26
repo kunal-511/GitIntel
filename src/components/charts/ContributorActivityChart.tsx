@@ -17,7 +17,6 @@ import { ContributorCommitData } from '@/lib/github';
 
 interface ContributorActivityChartProps {
   data: ContributorCommitData[];
-  contributorName: string;
   height?: number;
   showAdditions?: boolean;
   showDeletions?: boolean;
@@ -25,7 +24,6 @@ interface ContributorActivityChartProps {
 
 export default function ContributorActivityChart({ 
   data, 
-  contributorName,
   height = 300,
   showAdditions = false,
   showDeletions = false
@@ -46,15 +44,19 @@ export default function ContributorActivityChart({
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+  const CustomTooltip = ({ active, payload, label }: { 
+    active?: boolean; 
+    payload?: Array<{ color: string; value: number; dataKey: string }>; 
+    label?: string 
+  }) => {
+    if (active && payload && payload.length && label) {
       return (
         <div className="bg-neutral-800 border border-neutral-600 rounded-lg p-3 shadow-lg">
           <p className="text-neutral-200 font-medium mb-2">
             Week of {formatTooltipLabel(label)}
           </p>
           <div className="space-y-1">
-            {payload.map((entry: any, index: number) => (
+            {payload.map((entry: { color: string; value: number; dataKey: string }, index: number) => (
               <div key={index} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 

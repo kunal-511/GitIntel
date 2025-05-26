@@ -47,8 +47,12 @@ export default function CommitActivityChart({
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+  const CustomTooltip = ({ active, payload, label }: { 
+    active?: boolean; 
+    payload?: Array<{ value: number; dataKey: string }>; 
+    label?: string 
+  }) => {
+    if (active && payload && payload.length && label) {
       return (
         <div className="bg-neutral-800 border border-neutral-600 rounded-lg p-3 shadow-lg">
           <p className="text-neutral-200 font-medium mb-2">

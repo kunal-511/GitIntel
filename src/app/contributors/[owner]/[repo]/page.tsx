@@ -70,7 +70,7 @@ export default function ContributorsPage() {
     if (owner && repo) {
       fetchInsights();
     }
-  }, [owner, repo, period]);
+  }, [owner, repo, period, selectedContributor]);
 
   const handlePeriodChange = (newPeriod: Period) => {
     setPeriod(newPeriod);
@@ -385,7 +385,6 @@ export default function ContributorsPage() {
                         {selectedContributor.commitHistory.length > 0 ? (
                           <ContributorActivityChart
                             data={selectedContributor.commitHistory}
-                            contributorName={selectedContributor.login}
                             height={350}
                             showAdditions={showAdditions}
                             showDeletions={showDeletions}

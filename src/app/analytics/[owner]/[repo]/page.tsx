@@ -6,10 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Star, GitFork, Eye, Users, TrendingUp, AlertTriangle, Code, Activity, Shield } from "lucide-react";
+import { ArrowLeft, Star, GitFork, Users, TrendingUp, AlertTriangle, Code, Activity, Shield } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { format } from "date-fns";
 
 // Import our new components
 import GrowthChart from "@/components/charts/GrowthChart";
@@ -23,7 +22,19 @@ import { AdvancedAnalytics } from "@/lib/github";
 
 
 interface CompetitiveAnalysis {
-  targetRepository: any;
+  targetRepository: {
+    id: string;
+    name: string;
+    fullName: string;
+    description: string | null;
+    stargazerCount: number;
+    forkCount: number;
+    language: string | null;
+    owner: {
+      login: string;
+      avatarUrl: string;
+    };
+  };
   competitors: Array<{
     id: string;
     name: string;
@@ -314,7 +325,7 @@ export default function AnalyticsPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-neutral-400">
-                    Click "Analyze Competition" to discover similar repositories and your competitive position
+                    Click &quot;Analyze Competition&quot; to discover similar repositories and your competitive position
                   </div>
                 )}
               </CardContent>

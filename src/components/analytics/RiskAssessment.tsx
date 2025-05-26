@@ -57,11 +57,7 @@ export default function RiskAssessment({ data }: RiskAssessmentProps) {
     }
   };
 
-  const getProgressColor = (score: number) => {
-    if (score >= 70) return 'bg-green-500';
-    if (score >= 40) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+
 
   return (
     <div className="space-y-6">
