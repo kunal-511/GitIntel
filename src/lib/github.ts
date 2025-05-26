@@ -74,6 +74,115 @@ export interface RepositoryStats {
   };
 }
 
+export interface HistoricalData {
+  date: string;
+  stars: number;
+  forks: number;
+  commits: number;
+}
+
+export interface ContributorData {
+  login: string;
+  avatarUrl: string;
+  contributions: number;
+  type: string;
+}
+
+export interface TechnologyStack {
+  languages: Array<{
+    name: string;
+    percentage: number;
+    bytes: number;
+    color: string;
+  }>;
+  dependencies: Array<{
+    name: string;
+    version: string;
+    type: 'dependency' | 'devDependency';
+  }>;
+  frameworks: string[];
+}
+
+export interface RiskAssessment {
+  busFactor: {
+    score: number;
+    level: 'low' | 'medium' | 'high';
+    topContributors: number;
+    description: string;
+  };
+  maintenanceStatus: {
+    score: number;
+    level: 'active' | 'moderate' | 'inactive';
+    lastCommit: string;
+    avgCommitsPerMonth: number;
+    description: string;
+  };
+  communityHealth: {
+    score: number;
+    level: 'healthy' | 'moderate' | 'concerning';
+    factors: string[];
+  };
+}
+
+export interface AdvancedAnalytics {
+  repository: Repository;
+  historical: HistoricalData[];
+  contributors: ContributorData[];
+  technologyStack: TechnologyStack;
+  riskAssessment: RiskAssessment;
+  trends: {
+    starsGrowth: number;
+    forksGrowth: number;
+    contributorsGrowth: number;
+    commitActivity: number;
+  };
+}
+
+ export interface ContributorCommitData {
+  week: string; // ISO date string for the week
+  commits: number;
+  additions: number;
+  deletions: number;
+}
+
+export interface DetailedContributor {
+  login: string;
+  avatarUrl: string;
+  name: string | null;
+  email: string | null;
+  contributions: number;
+  commitHistory: ContributorCommitData[];
+  totalAdditions: number;
+  totalDeletions: number;
+  firstCommit: string;
+  lastCommit: string;
+  weeklyAverage: number;
+  isActive: boolean; // active in last 4 weeks
+}
+
+export interface ContributorInsights {
+  contributors: DetailedContributor[];
+  totalCommits: number;
+  totalContributors: number;
+  activeContributors: number; // active in last 4 weeks
+  commitsByWeek: Array<{
+    week: string;
+    total: number;
+    contributors: number;
+  }>;
+  topLanguages: Array<{
+    language: string;
+    commits: number;
+    contributors: string[];
+  }>;
+  periodStats: {
+    startDate: string;
+    endDate: string;
+    totalCommits: number;
+    avgCommitsPerWeek: number;
+  };
+}
+
 // GraphQL query to get repository details and stats
 export const REPOSITORY_QUERY = `
   query GetRepository($owner: String!, $name: String!) {
@@ -420,4 +529,730 @@ export class GitHubService {
     
     return Promise.all(promises);
   }
+
+  /**
+   * Get historical growth data for a repository
+   */
+  static async getHistoricalData(owner: string, name: string): Promise<HistoricalData[]> {
+    try {
+      const restClient = getGitHubRest();
+      
+      // Get stargazers with timestamps (limited to recent data due to API constraints)
+      const starHistory = await restClient.activity.listStargazersForRepo({
+        owner,
+        repo: name,
+        per_page: 100,
+        headers: {
+          Accept: 'application/vnd.github.v3.star+json'
+        }
+      });
+
+      // Get commit activity for the past year
+      const commitActivity = await restClient.repos.getCommitActivityStats({
+        owner,
+        repo: name
+      });
+
+      // Process data into monthly buckets
+      const monthlyData: { [key: string]: HistoricalData } = {};
+      const now = new Date();
+      
+      // Initialize last 12 months
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = date.toISOString().slice(0, 7); // YYYY-MM format
+        monthlyData[key] = {
+          date: key,
+          stars: 0,
+          forks: 0,
+          commits: 0
+        };
+      }
+
+      // Process star history
+      let cumulativeStars = 0;
+      starHistory.data.forEach((star: any) => {
+        const date = new Date(star.starred_at);
+        const key = date.toISOString().slice(0, 7);
+        if (monthlyData[key]) {
+          cumulativeStars++;
+          monthlyData[key].stars = cumulativeStars;
+        }
+      });
+
+      // Process commit activity
+      if (commitActivity.data && Array.isArray(commitActivity.data)) {
+        commitActivity.data.forEach((week: any) => {
+          const date = new Date(week.week * 1000);
+          const key = date.toISOString().slice(0, 7);
+          if (monthlyData[key]) {
+            monthlyData[key].commits += week.total;
+          }
+        });
+      }
+
+      return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
+    } catch (error) {
+      console.warn('Could not fetch historical data:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get detailed contributor analysis
+   */
+  static async getContributorAnalysis(owner: string, name: string): Promise<ContributorData[]> {
+    try {
+      const restClient = getGitHubRest();
+      
+      const contributors = await restClient.repos.listContributors({
+        owner,
+        repo: name,
+        per_page: 50
+      });
+
+      return contributors.data.map((contributor: any) => ({
+        login: contributor.login,
+        avatarUrl: contributor.avatar_url,
+        contributions: contributor.contributions,
+        type: contributor.type
+      }));
+    } catch (error) {
+      console.warn('Could not fetch contributor analysis:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get technology stack analysis
+   */
+  static async getTechnologyStack(owner: string, name: string): Promise<TechnologyStack> {
+    try {
+      const restClient = getGitHubRest();
+      
+      // Get languages
+      const languages = await restClient.repos.listLanguages({
+        owner,
+        repo: name
+      });
+
+      const totalBytes = Object.values(languages.data).reduce((sum: number, bytes: any) => sum + bytes, 0);
+      
+      const languageData = Object.entries(languages.data).map(([name, bytes]: [string, any]) => ({
+        name,
+        bytes,
+        percentage: Math.round((bytes / totalBytes) * 100),
+        color: getLanguageColor(name)
+      })).sort((a, b) => b.bytes - a.bytes);
+
+      // Try to get package.json for dependencies (if it's a Node.js project)
+      let dependencies: Array<{ name: string; version: string; type: 'dependency' | 'devDependency' }> = [];
+      try {
+        const packageJson = await restClient.repos.getContent({
+          owner,
+          repo: name,
+          path: 'package.json'
+        });
+
+        if ('content' in packageJson.data) {
+          const content = JSON.parse(Buffer.from(packageJson.data.content, 'base64').toString());
+          
+          if (content.dependencies) {
+            Object.entries(content.dependencies).forEach(([name, version]: [string, any]) => {
+              dependencies.push({ name, version, type: 'dependency' });
+            });
+          }
+          
+          if (content.devDependencies) {
+            Object.entries(content.devDependencies).forEach(([name, version]: [string, any]) => {
+              dependencies.push({ name, version, type: 'devDependency' });
+            });
+          }
+        }
+      } catch (error) {
+        // package.json not found or not accessible
+      }
+
+      return {
+        languages: languageData,
+        dependencies: dependencies.slice(0, 20), // Limit to top 20
+        frameworks: detectFrameworks(languageData, dependencies)
+      };
+    } catch (error) {
+      console.warn('Could not fetch technology stack:', error);
+      return {
+        languages: [],
+        dependencies: [],
+        frameworks: []
+      };
+    }
+  }
+
+  /**
+   * Perform risk assessment
+   */
+  static async getRiskAssessment(owner: string, name: string, contributors: ContributorData[]): Promise<RiskAssessment> {
+    try {
+      const restClient = getGitHubRest();
+      
+      // Get recent commits for maintenance analysis
+      const commits = await restClient.repos.listCommits({
+        owner,
+        repo: name,
+        per_page: 100
+      });
+
+      const now = new Date();
+      const lastCommit = commits.data[0] ? new Date(commits.data[0].commit.author?.date || '') : new Date(0);
+      const daysSinceLastCommit = Math.floor((now.getTime() - lastCommit.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Calculate commits per month
+      const threeMonthsAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+      const recentCommits = commits.data.filter(commit => 
+        new Date(commit.commit.author?.date || '') > threeMonthsAgo
+      );
+      const avgCommitsPerMonth = Math.round((recentCommits.length / 3) * 10) / 10;
+
+      // Bus factor analysis
+      const totalContributions = contributors.reduce((sum, c) => sum + c.contributions, 0);
+      const topContributorPercentage = contributors.length > 0 ? 
+        (contributors[0].contributions / totalContributions) * 100 : 0;
+      
+      let busFactor: RiskAssessment['busFactor'];
+      if (topContributorPercentage > 70) {
+        busFactor = {
+          score: 25,
+          level: 'high',
+          topContributors: 1,
+          description: 'High risk: Single contributor dominates the project'
+        };
+      } else if (topContributorPercentage > 50) {
+        busFactor = {
+          score: 50,
+          level: 'medium',
+          topContributors: Math.min(2, contributors.length),
+          description: 'Medium risk: Few contributors handle most of the work'
+        };
+      } else {
+        busFactor = {
+          score: 85,
+          level: 'low',
+          topContributors: Math.min(5, contributors.length),
+          description: 'Low risk: Well-distributed contributor base'
+        };
+      }
+
+      // Maintenance status
+      let maintenanceStatus: RiskAssessment['maintenanceStatus'];
+      if (daysSinceLastCommit > 180) {
+        maintenanceStatus = {
+          score: 25,
+          level: 'inactive',
+          lastCommit: lastCommit.toISOString(),
+          avgCommitsPerMonth,
+          description: 'Inactive: No recent commits'
+        };
+      } else if (daysSinceLastCommit > 60 || avgCommitsPerMonth < 2) {
+        maintenanceStatus = {
+          score: 60,
+          level: 'moderate',
+          lastCommit: lastCommit.toISOString(),
+          avgCommitsPerMonth,
+          description: 'Moderate: Infrequent updates'
+        };
+      } else {
+        maintenanceStatus = {
+          score: 90,
+          level: 'active',
+          lastCommit: lastCommit.toISOString(),
+          avgCommitsPerMonth,
+          description: 'Active: Regular updates and maintenance'
+        };
+      }
+
+      // Community health
+      const healthFactors = [];
+      if (contributors.length > 10) healthFactors.push('Active contributor community');
+      if (avgCommitsPerMonth > 5) healthFactors.push('Regular development activity');
+      if (daysSinceLastCommit < 30) healthFactors.push('Recent updates');
+      
+      const communityHealth: RiskAssessment['communityHealth'] = {
+        score: Math.min(90, healthFactors.length * 30),
+        level: healthFactors.length >= 2 ? 'healthy' : healthFactors.length === 1 ? 'moderate' : 'concerning',
+        factors: healthFactors
+      };
+
+      return {
+        busFactor,
+        maintenanceStatus,
+        communityHealth
+      };
+    } catch (error) {
+      console.warn('Could not perform risk assessment:', error);
+      return {
+        busFactor: {
+          score: 50,
+          level: 'medium',
+          topContributors: 0,
+          description: 'Unable to assess'
+        },
+        maintenanceStatus: {
+          score: 50,
+          level: 'moderate',
+          lastCommit: new Date().toISOString(),
+          avgCommitsPerMonth: 0,
+          description: 'Unable to assess'
+        },
+        communityHealth: {
+          score: 50,
+          level: 'moderate',
+          factors: []
+        }
+      };
+    }
+  }
+
+  /**
+   * Get comprehensive advanced analytics
+   */
+  static async getAdvancedAnalytics(owner: string, name: string): Promise<AdvancedAnalytics> {
+    try {
+      // Get basic repository data
+      const basicStats = await this.getRepositoryStats(owner, name);
+      
+      // Get advanced data in parallel
+      const [historical, contributors, technologyStack] = await Promise.all([
+        this.getHistoricalData(owner, name),
+        this.getContributorAnalysis(owner, name),
+        this.getTechnologyStack(owner, name)
+      ]);
+
+      // Get risk assessment (depends on contributors data)
+      const riskAssessment = await this.getRiskAssessment(owner, name, contributors);
+
+      // Calculate trends
+      const trends = {
+        starsGrowth: calculateGrowthRate(historical, 'stars'),
+        forksGrowth: calculateGrowthRate(historical, 'forks'),
+        contributorsGrowth: contributors.length > 0 ? 5 : 0, // Simplified
+        commitActivity: calculateGrowthRate(historical, 'commits')
+      };
+
+      return {
+        repository: basicStats.repository,
+        historical,
+        contributors,
+        technologyStack,
+        riskAssessment,
+        trends
+      };
+    } catch (error) {
+      console.error('Error fetching advanced analytics:', error);
+      throw new Error(`Failed to fetch advanced analytics for ${owner}/${name}`);
+    }
+  }
+
+  /**
+   * Get detailed contributor insights with commit history
+   */
+  static async getContributorInsights(
+    owner: string, 
+    name: string, 
+    period: 'week' | 'month' | 'quarter' | 'year' | 'all' = 'year'
+  ): Promise<ContributorInsights> {
+    try {
+      const restClient = getGitHubRest();
+      
+      // Calculate date range based on period
+      const endDate = new Date();
+      const startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        case 'all':
+          startDate.setFullYear(2008); // GitHub's founding year
+          break;
+      }
+
+      // Get contributors list with timeout and error handling
+      let contributorsResponse;
+      try {
+        contributorsResponse = await Promise.race([
+          restClient.repos.listContributors({
+            owner,
+            repo: name,
+            per_page: 50 // Reduced to avoid timeouts
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Contributors request timeout')), 10000)
+          )
+        ]) as any;
+      } catch (error) {
+        console.warn('Failed to fetch contributors, using fallback approach:', error);
+        // Return minimal data structure if contributors fetch fails
+        return {
+          contributors: [],
+          totalCommits: 0,
+          totalContributors: 0,
+          activeContributors: 0,
+          commitsByWeek: [],
+          topLanguages: [],
+          periodStats: {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            totalCommits: 0,
+            avgCommitsPerWeek: 0
+          }
+        };
+      }
+
+      // Get detailed commits for the period with timeout
+      let commitsResponse;
+      try {
+        commitsResponse = await Promise.race([
+          restClient.repos.listCommits({
+            owner,
+            repo: name,
+            since: startDate.toISOString(),
+            until: endDate.toISOString(),
+            per_page: 50 // Reduced to avoid timeouts
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Commits request timeout')), 10000)
+          )
+        ]) as any;
+      } catch (error) {
+        console.warn('Failed to fetch commits, using contributors data only:', error);
+        // Use contributors data without detailed commit analysis
+        const contributors = contributorsResponse.data
+          .filter((c: any) => c.login)
+          .map((contributor: any) => ({
+            login: contributor.login,
+            avatarUrl: contributor.avatar_url || '',
+            name: null,
+            email: null,
+            contributions: contributor.contributions || 0,
+            commitHistory: [],
+            totalAdditions: 0,
+            totalDeletions: 0,
+            firstCommit: '',
+            lastCommit: '',
+            weeklyAverage: 0,
+            isActive: false
+          }))
+          .sort((a: any, b: any) => b.contributions - a.contributions);
+
+        return {
+          contributors,
+          totalCommits: contributors.reduce((sum: number, c: any) => sum + c.contributions, 0),
+          totalContributors: contributors.length,
+          activeContributors: 0,
+          commitsByWeek: [],
+          topLanguages: [],
+          periodStats: {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            totalCommits: contributors.reduce((sum: number, c: any) => sum + c.contributions, 0),
+            avgCommitsPerWeek: 0
+          }
+        };
+      }
+
+      // Process contributor data
+      const contributorMap = new Map<string, DetailedContributor>();
+      const weeklyCommits = new Map<string, { total: number; contributors: Set<string> }>();
+
+      // Initialize contributors
+      for (const contributor of contributorsResponse.data) {
+        if (!contributor.login) continue; // Skip if login is undefined
+        
+        contributorMap.set(contributor.login, {
+          login: contributor.login,
+          avatarUrl: contributor.avatar_url || '',
+          name: null,
+          email: null,
+          contributions: contributor.contributions || 0,
+          commitHistory: [],
+          totalAdditions: 0,
+          totalDeletions: 0,
+          firstCommit: '',
+          lastCommit: '',
+          weeklyAverage: 0,
+          isActive: false
+        });
+      }
+
+      // Process commits to get detailed stats
+      for (const commit of commitsResponse.data) {
+        const author = commit.author?.login;
+        if (!author || !contributorMap.has(author)) continue;
+
+        const contributor = contributorMap.get(author)!;
+        const commitDate = new Date(commit.commit.author?.date || '');
+        const weekKey = this.getWeekKey(commitDate);
+
+        // Update contributor data
+        if (!contributor.firstCommit || commitDate < new Date(contributor.firstCommit)) {
+          contributor.firstCommit = commit.commit.author?.date || '';
+        }
+        if (!contributor.lastCommit || commitDate > new Date(contributor.lastCommit)) {
+          contributor.lastCommit = commit.commit.author?.date || '';
+        }
+
+        contributor.name = commit.commit.author?.name || null;
+        contributor.email = commit.commit.author?.email || null;
+
+        // Check if active (committed in last 4 weeks)
+        const fourWeeksAgo = new Date();
+        fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+        if (commitDate > fourWeeksAgo) {
+          contributor.isActive = true;
+        }
+
+        // Update weekly commits
+        if (!weeklyCommits.has(weekKey)) {
+          weeklyCommits.set(weekKey, { total: 0, contributors: new Set() });
+        }
+        weeklyCommits.get(weekKey)!.total++;
+        weeklyCommits.get(weekKey)!.contributors.add(author);
+
+        // Update commit history (without fetching individual commit details to avoid rate limits)
+        const existingWeek = contributor.commitHistory.find(h => h.week === weekKey);
+        if (existingWeek) {
+          existingWeek.commits++;
+        } else {
+          contributor.commitHistory.push({
+            week: weekKey,
+            commits: 1,
+            additions: 0, // Will be 0 since we're not fetching individual commit details
+            deletions: 0  // Will be 0 since we're not fetching individual commit details
+          });
+        }
+      }
+
+      // Calculate weekly averages
+      for (const contributor of contributorMap.values()) {
+        const weeks = contributor.commitHistory.length;
+        if (weeks > 0) {
+          const totalCommits = contributor.commitHistory.reduce((sum, week) => sum + week.commits, 0);
+          contributor.weeklyAverage = Math.round((totalCommits / weeks) * 10) / 10;
+        }
+        
+        // Sort commit history by week
+        contributor.commitHistory.sort((a, b) => a.week.localeCompare(b.week));
+      }
+
+      // Convert weekly commits to array
+      const commitsByWeek = Array.from(weeklyCommits.entries())
+        .map(([week, data]) => ({
+          week,
+          total: data.total,
+          contributors: data.contributors.size
+        }))
+        .sort((a, b) => a.week.localeCompare(b.week));
+
+      // Calculate language stats (simplified - would need more API calls for accuracy)
+      const topLanguages = [
+        { language: 'JavaScript', commits: 0, contributors: [] },
+        { language: 'TypeScript', commits: 0, contributors: [] },
+        { language: 'Python', commits: 0, contributors: [] }
+      ];
+
+      const contributors = Array.from(contributorMap.values())
+        .sort((a, b) => b.contributions - a.contributions);
+
+      const totalCommits = commitsResponse.data.length;
+      const activeContributors = contributors.filter(c => c.isActive).length;
+
+      // Calculate period stats
+      const weeksDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const avgCommitsPerWeek = weeksDiff > 0 ? Math.round((totalCommits / weeksDiff) * 10) / 10 : 0;
+
+      return {
+        contributors,
+        totalCommits,
+        totalContributors: contributors.length,
+        activeContributors,
+        commitsByWeek,
+        topLanguages,
+        periodStats: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalCommits,
+          avgCommitsPerWeek
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching contributor insights:', error);
+      throw new Error(`Failed to fetch contributor insights for ${owner}/${name}`);
+    }
+  }
+
+  /**
+   * Get commit activity for a specific contributor
+   */
+  static async getContributorCommitActivity(
+    owner: string,
+    name: string,
+    contributor: string,
+    period: 'week' | 'month' | 'quarter' | 'year' = 'year'
+  ): Promise<ContributorCommitData[]> {
+    try {
+      const restClient = getGitHubRest();
+      
+      const endDate = new Date();
+      const startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+      }
+
+      const commits = await restClient.repos.listCommits({
+        owner,
+        repo: name,
+        author: contributor,
+        since: startDate.toISOString(),
+        until: endDate.toISOString(),
+        per_page: 100
+      });
+
+      const weeklyData = new Map<string, ContributorCommitData>();
+
+      for (const commit of commits.data) {
+        const commitDate = new Date(commit.commit.author?.date || '');
+        const weekKey = this.getWeekKey(commitDate);
+
+        if (!weeklyData.has(weekKey)) {
+          weeklyData.set(weekKey, {
+            week: weekKey,
+            commits: 0,
+            additions: 0,
+            deletions: 0
+          });
+        }
+
+        const weekData = weeklyData.get(weekKey)!;
+        weekData.commits++;
+
+        // Try to get commit stats
+        try {
+          const commitDetails = await restClient.repos.getCommit({
+            owner,
+            repo: name,
+            ref: commit.sha
+          });
+
+          weekData.additions += commitDetails.data.stats?.additions || 0;
+          weekData.deletions += commitDetails.data.stats?.deletions || 0;
+        } catch (error) {
+          // Skip if we can't get commit details
+        }
+      }
+
+      return Array.from(weeklyData.values()).sort((a, b) => a.week.localeCompare(b.week));
+    } catch (error) {
+      console.error('Error fetching contributor commit activity:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Helper method to get week key (YYYY-MM-DD format for Monday of the week)
+   */
+  private static getWeekKey(date: Date): string {
+    const monday = new Date(date);
+    const day = monday.getDay();
+    const diff = monday.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    monday.setDate(diff);
+    return monday.toISOString().split('T')[0];
+  }
+}
+
+// Helper functions
+function getLanguageColor(language: string): string {
+  const colors: { [key: string]: string } = {
+    JavaScript: '#f1e05a',
+    TypeScript: '#2b7489',
+    Python: '#3572A5',
+    Java: '#b07219',
+    'C++': '#f34b7d',
+    C: '#555555',
+    'C#': '#239120',
+    PHP: '#4F5D95',
+    Ruby: '#701516',
+    Go: '#00ADD8',
+    Rust: '#dea584',
+    Swift: '#ffac45',
+    Kotlin: '#F18E33',
+    Dart: '#00B4AB',
+    HTML: '#e34c26',
+    CSS: '#1572B6',
+    Shell: '#89e051',
+    Vue: '#2c3e50',
+    React: '#61dafb'
+  };
+  return colors[language] || '#8884d8';
+}
+
+function detectFrameworks(languages: any[], dependencies: any[]): string[] {
+  const frameworks = new Set<string>();
+  
+  // Detect based on dependencies
+  dependencies.forEach(dep => {
+    if (dep.name.includes('react')) frameworks.add('React');
+    if (dep.name.includes('vue')) frameworks.add('Vue.js');
+    if (dep.name.includes('angular')) frameworks.add('Angular');
+    if (dep.name.includes('express')) frameworks.add('Express.js');
+    if (dep.name.includes('next')) frameworks.add('Next.js');
+    if (dep.name.includes('nuxt')) frameworks.add('Nuxt.js');
+    if (dep.name.includes('svelte')) frameworks.add('Svelte');
+  });
+
+  // Detect based on languages
+  languages.forEach(lang => {
+    if (lang.name === 'Python') {
+      frameworks.add('Python');
+    }
+    if (lang.name === 'Java') {
+      frameworks.add('Java');
+    }
+  });
+
+  return Array.from(frameworks);
+}
+
+function calculateGrowthRate(historical: HistoricalData[], field: keyof HistoricalData): number {
+  if (historical.length < 2) return 0;
+  
+  const recent = historical.slice(-3); // Last 3 months
+  const older = historical.slice(-6, -3); // Previous 3 months
+  
+  const recentAvg = recent.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / recent.length;
+  const olderAvg = older.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / older.length;
+  
+  if (olderAvg === 0) return recentAvg > 0 ? 100 : 0;
+  
+  return Math.round(((recentAvg - olderAvg) / olderAvg) * 100);
 } 
