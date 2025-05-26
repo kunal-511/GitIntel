@@ -1,103 +1,205 @@
+"use client";
+
+import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Image from "next/image";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+interface Repository {
+  id: string;
+  name: string;
+  fullName: string;
+  description: string | null;
+  url: string;
+  stargazerCount: number;
+  forkCount: number;
+  language: string | null;
+  owner: {
+    login: string;
+    avatarUrl: string;
+  };
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function LandingPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [compareTray, setCompareTray] = useState<Repository[]>([]);
+  const [trayOpen, setTrayOpen] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/github/search?q=${encodeURIComponent(searchQuery)}&limit=10`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to search repositories");
+      setRepositories(data.repositories);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGetTrending = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/github/trending?period=week&limit=10");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to fetch trending repositories");
+      setRepositories(data.repositories);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToCompare = (repo: Repository) => {
+    if (!compareTray.find((r) => r.id === repo.id)) {
+      setCompareTray([...compareTray, repo]);
+      setTrayOpen(true);
+    }
+  };
+
+  const handleRemoveFromCompare = (repoId: string) => {
+    setCompareTray(compareTray.filter((r) => r.id !== repoId));
+  };
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex flex-col items-center px-4 pb-16">
+      {/* Hero Section */}
+      <section className="w-full max-w-2xl text-center mt-16 mb-10">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900 mb-4">
+          GitIntel
+        </h1>
+        <p className="text-lg md:text-xl text-gray-600 mb-8">
+          Analyze and compare open source projects instantly.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            placeholder="Search repositories (e.g., react, language:python)"
+            className="w-full sm:w-80 bg-white"
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
+          />
+          <Button onClick={handleSearch} disabled={loading} className="w-full sm:w-auto">
+            {loading ? "Searching..." : "Search"}
+          </Button>
+          <Button variant="outline" onClick={handleGetTrending} disabled={loading} className="w-full sm:w-auto">
+            Trending
+          </Button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {error && (
+          <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+      </section>
+
+      {/* Results Grid */}
+      <section className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {repositories.map((repo) => (
+          <Card key={repo.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <Image
+                src={repo.owner.avatarUrl}
+                alt={repo.owner.login}
+                width={32}
+                height={32}
+                className="rounded-full border"
+              />
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  <a href={repo.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    {repo.fullName}
+                  </a>
+                </CardTitle>
+                <span className="text-xs text-gray-500">{repo.language}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-700 mb-2 line-clamp-2 min-h-[40px]">{repo.description}</p>
+              <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
+                <span>⭐ {repo.stargazerCount.toLocaleString()}</span>
+                <span>🍴 {repo.forkCount.toLocaleString()}</span>
+              </div>
+              <Button
+                size="sm"
+                variant={compareTray.find((r) => r.id === repo.id) ? "secondary" : "default"}
+                onClick={() => handleAddToCompare(repo)}
+                disabled={!!compareTray.find((r) => r.id === repo.id)}
+                className="w-full"
+              >
+                {compareTray.find((r) => r.id === repo.id) ? "Added" : "Compare"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      {/* Empty State */}
+      {repositories.length === 0 && !loading && !error && (
+        <div className="text-center text-gray-400 mt-16">
+          Search for repositories or view trending ones to get started.
+        </div>
+      )}
+
+      {/* Compare Tray (Sheet/Drawer) */}
+      <Sheet open={trayOpen} onOpenChange={setTrayOpen}>
+        <SheetTrigger asChild>
+          {compareTray.length > 0 && (
+            <Button
+              className="fixed bottom-6 right-6 z-50 shadow-lg px-6 py-3 text-lg"
+              onClick={() => setTrayOpen(true)}
+            >
+              Compare ({compareTray.length})
+            </Button>
+          )}
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle>Compare Repositories</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            {compareTray.length === 0 ? (
+              <div className="text-gray-500 text-center">No repositories selected.</div>
+            ) : (
+              compareTray.map((repo) => (
+                <Card key={repo.id} className="flex items-center gap-3 p-3">
+                  <Image
+                    src={repo.owner.avatarUrl}
+                    alt={repo.owner.login}
+                    width={28}
+                    height={28}
+                    className="rounded-full border"
+                  />
+                  <div className="flex-1">
+                    <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
+                      {repo.fullName}
+                    </a>
+                    <div className="text-xs text-gray-500">{repo.language}</div>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => handleRemoveFromCompare(repo.id)}>
+                    ✕
+                  </Button>
+                </Card>
+              ))
+            )}
+          </div>
+          {compareTray.length > 1 && (
+            <Button className="mt-6 w-full" onClick={() => alert("Comparison feature coming soon!")}>Compare Now</Button>
+          )}
+        </SheetContent>
+      </Sheet>
+    </main>
   );
 }
