@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Navbar from "@/components/Navbar";
+import HeroSection from "@/components/HeroSection";
+import BackgroundEffect from "@/components/BackgroundEffect";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,133 +76,130 @@ export default function LandingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex flex-col items-center px-4 pb-16">
-      {/* Hero Section */}
-      <section className="w-full max-w-2xl text-center mt-16 mb-10">
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900 mb-4">
-          GitIntel
-        </h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-8">
-          Analyze and compare open source projects instantly.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            placeholder="Search repositories (e.g., react, language:python)"
-            className="w-full sm:w-80 bg-white"
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
-          />
-          <Button onClick={handleSearch} disabled={loading} className="w-full sm:w-auto">
-            {loading ? "Searching..." : "Search"}
-          </Button>
-          <Button variant="outline" onClick={handleGetTrending} disabled={loading} className="w-full sm:w-auto">
-            Trending
-          </Button>
-        </div>
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
-      </section>
-
-      {/* Results Grid */}
-      <section className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {repositories.map((repo) => (
-          <Card key={repo.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <Image
-                src={repo.owner.avatarUrl}
-                alt={repo.owner.login}
-                width={32}
-                height={32}
-                className="rounded-full border"
-              />
-              <div>
-                <CardTitle className="text-base font-semibold">
-                  <a href={repo.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    {repo.fullName}
-                  </a>
-                </CardTitle>
-                <span className="text-xs text-gray-500">{repo.language}</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700 mb-2 line-clamp-2 min-h-[40px]">{repo.description}</p>
-              <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
-                <span>⭐ {repo.stargazerCount.toLocaleString()}</span>
-                <span>🍴 {repo.forkCount.toLocaleString()}</span>
-              </div>
-              <Button
-                size="sm"
-                variant={compareTray.find((r) => r.id === repo.id) ? "secondary" : "default"}
-                onClick={() => handleAddToCompare(repo)}
-                disabled={!!compareTray.find((r) => r.id === repo.id)}
-                className="w-full"
-              >
-                {compareTray.find((r) => r.id === repo.id) ? "Added" : "Compare"}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
-
-      {/* Empty State */}
-      {repositories.length === 0 && !loading && !error && (
-        <div className="text-center text-gray-400 mt-16">
-          Search for repositories or view trending ones to get started.
-        </div>
-      )}
-
-      {/* Compare Tray (Sheet/Drawer) */}
-      <Sheet open={trayOpen} onOpenChange={setTrayOpen}>
-        <SheetTrigger asChild>
-          {compareTray.length > 0 && (
-            <Button
-              className="fixed bottom-6 right-6 z-50 shadow-lg px-6 py-3 text-lg"
-              onClick={() => setTrayOpen(true)}
-            >
-              Compare ({compareTray.length})
+    <>
+      <BackgroundEffect />
+      <Navbar />
+      <main className="min-h-screen flex flex-col items-center px-4 pb-16">
+        <HeroSection>
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-center w-full">
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              placeholder="Search repositories (e.g., react, language:python)"
+              className="w-full sm:w-80 bg-white"
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
+            />
+            <Button onClick={handleSearch} disabled={loading} className="w-full sm:w-auto">
+              {loading ? "Searching..." : "Search"}
             </Button>
+            <Button variant="outline" onClick={handleGetTrending} disabled={loading} className="w-full sm:w-auto">
+              Trending
+            </Button>
+          </div>
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+              {error}
+            </div>
           )}
-        </SheetTrigger>
-        <SheetContent side="right" className="w-full max-w-md">
-          <SheetHeader>
-            <SheetTitle>Compare Repositories</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-4">
-            {compareTray.length === 0 ? (
-              <div className="text-gray-500 text-center">No repositories selected.</div>
-            ) : (
-              compareTray.map((repo) => (
-                <Card key={repo.id} className="flex items-center gap-3 p-3">
-                  <Image
-                    src={repo.owner.avatarUrl}
-                    alt={repo.owner.login}
-                    width={28}
-                    height={28}
-                    className="rounded-full border"
-                  />
-                  <div className="flex-1">
-                    <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
+        </HeroSection>
+
+        {/* Results Grid */}
+        <section className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {repositories.map((repo) => (
+            <Card key={repo.id} className="bg-neutral-900 border border-blue-900/40 hover:shadow-blue-900/40 hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                <Image
+                  src={repo.owner.avatarUrl}
+                  alt={repo.owner.login}
+                  width={32}
+                  height={32}
+                  className="rounded-full border border-blue-800"
+                />
+                <div>
+                  <CardTitle className="text-base font-semibold text-blue-200">
+                    <a href={repo.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {repo.fullName}
                     </a>
-                    <div className="text-xs text-gray-500">{repo.language}</div>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => handleRemoveFromCompare(repo.id)}>
-                    ✕
-                  </Button>
-                </Card>
-              ))
-            )}
+                  </CardTitle>
+                  <span className="text-xs text-cyan-300">{repo.language}</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-neutral-200 mb-2 line-clamp-2 min-h-[40px]">{repo.description}</p>
+                <div className="flex items-center gap-4 text-xs text-blue-300 mb-2">
+                  <span>⭐ {repo.stargazerCount.toLocaleString()}</span>
+                  <span>🍴 {repo.forkCount.toLocaleString()}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant={compareTray.find((r) => r.id === repo.id) ? "secondary" : "default"}
+                  onClick={() => handleAddToCompare(repo)}
+                  disabled={!!compareTray.find((r) => r.id === repo.id)}
+                  className="w-full"
+                >
+                  {compareTray.find((r) => r.id === repo.id) ? "Added" : "Compare"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
+        {/* Empty State */}
+        {repositories.length === 0 && !loading && !error && (
+          <div className="text-center text-gray-400 mt-16">
+            Search for repositories or view trending ones to get started.
           </div>
-          {compareTray.length > 1 && (
-            <Button className="mt-6 w-full" onClick={() => alert("Comparison feature coming soon!")}>Compare Now</Button>
-          )}
-        </SheetContent>
-      </Sheet>
-    </main>
+        )}
+
+        {/* Compare Tray (Sheet/Drawer) */}
+        <Sheet open={trayOpen} onOpenChange={setTrayOpen}>
+          <SheetTrigger asChild>
+            {compareTray.length > 0 && (
+              <Button
+                className="fixed bottom-6 right-6 z-50 shadow-lg px-6 py-3 text-lg"
+                onClick={() => setTrayOpen(true)}
+              >
+                Compare ({compareTray.length})
+              </Button>
+            )}
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full max-w-md">
+            <SheetHeader>
+              <SheetTitle>Compare Repositories</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-4">
+              {compareTray.length === 0 ? (
+                <div className="text-gray-500 text-center">No repositories selected.</div>
+              ) : (
+                compareTray.map((repo) => (
+                  <Card key={repo.id} className="flex items-center gap-3 p-3">
+                    <Image
+                      src={repo.owner.avatarUrl}
+                      alt={repo.owner.login}
+                      width={28}
+                      height={28}
+                      className="rounded-full border"
+                    />
+                    <div className="flex-1">
+                      <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
+                        {repo.fullName}
+                      </a>
+                      <div className="text-xs text-gray-500">{repo.language}</div>
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => handleRemoveFromCompare(repo.id)}>
+                      ✕
+                    </Button>
+                  </Card>
+                ))
+              )}
+            </div>
+            {compareTray.length > 1 && (
+              <Button className="mt-6 w-full" onClick={() => alert("Comparison feature coming soon!")}>Compare Now</Button>
+            )}
+          </SheetContent>
+        </Sheet>
+      </main>
+    </>
   );
 }
