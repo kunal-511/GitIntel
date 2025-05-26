@@ -116,9 +116,6 @@ export const REPOSITORY_QUERY = `
         name
         key
       }
-      collaborators {
-        totalCount
-      }
       releases {
         totalCount
       }
@@ -222,6 +219,59 @@ export class GitHubService {
 
       const repo = response.repository;
       
+      // Get contributors count using REST API as fallback with timeout
+      let contributorsCount = 0;
+      try {
+        const restClient = getGitHubRest();
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Contributors request timeout')), 5000); // 5 second timeout
+        });
+        
+        // Race between the API call and timeout
+        const contributorsResponse = await Promise.race([
+          restClient.repos.listContributors({
+            owner,
+            repo: name,
+            per_page: 1
+          }),
+          timeoutPromise
+        ]) as any;
+        
+        // GitHub returns the total count in the Link header for pagination
+        const linkHeader = contributorsResponse.headers.link;
+        if (linkHeader) {
+          const lastPageMatch = linkHeader.match(/page=(\d+)>; rel="last"/);
+          if (lastPageMatch) {
+            contributorsCount = parseInt(lastPageMatch[1]);
+          }
+        } else {
+          contributorsCount = contributorsResponse.data.length;
+        }
+      } catch (contributorsError) {
+        console.warn('Could not fetch contributors count (using fallback):', contributorsError instanceof Error ? contributorsError.message : 'Unknown error');
+        
+        // Try alternative approach using GraphQL if REST fails
+        try {
+          const contributorsGraphQL = await getGitHubGraphQL()(
+            `query GetContributors($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                mentionableUsers(first: 1) {
+                  totalCount
+                }
+              }
+            }`,
+            { owner, name }
+          ) as any;
+          
+          contributorsCount = contributorsGraphQL.repository?.mentionableUsers?.totalCount || 0;
+        } catch (graphqlError) {
+          console.warn('GraphQL contributors fallback also failed, defaulting to 0');
+          contributorsCount = 0; // Final fallback
+        }
+      }
+      
       return {
         repository: {
           id: repo.id,
@@ -249,7 +299,7 @@ export class GitHubService {
             key: repo.licenseInfo.key,
           } : null,
         },
-        contributors: repo.collaborators.totalCount,
+        contributors: contributorsCount,
         releases: repo.releases.totalCount,
         issues: {
           open: repo.issues.totalCount,

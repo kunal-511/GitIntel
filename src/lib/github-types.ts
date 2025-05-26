@@ -36,9 +36,6 @@ export interface GitHubRepositoryResponse {
       name: string;
       key: string;
     } | null;
-    collaborators: {
-      totalCount: number;
-    };
     releases: {
       totalCount: number;
     };

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Image from "next/image";
+import Link from "next/link";
 
 interface Repository {
   id: string;
@@ -108,33 +109,40 @@ export default function LandingPage() {
         <section className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {repositories.map((repo) => (
             <Card key={repo.id} className="bg-neutral-900 border border-blue-900/40 hover:shadow-blue-900/40 hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Image
-                  src={repo.owner.avatarUrl}
-                  alt={repo.owner.login}
-                  width={32}
-                  height={32}
-                  className="rounded-full border border-blue-800"
-                />
-                <div>
-                  <CardTitle className="text-base font-semibold text-blue-200">
-                    <a href={repo.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {repo.fullName}
-                    </a>
-                  </CardTitle>
-                  <span className="text-xs text-cyan-300">{repo.language}</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-neutral-200 mb-2 line-clamp-2 min-h-[40px]">{repo.description}</p>
-                <div className="flex items-center gap-4 text-xs text-blue-300 mb-2">
-                  <span>⭐ {repo.stargazerCount.toLocaleString()}</span>
-                  <span>🍴 {repo.forkCount.toLocaleString()}</span>
-                </div>
+              <Link href={`/analytics/${repo.owner.login}/${repo.name}`} className="block">
+                <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                  <Image
+                    src={repo.owner.avatarUrl}
+                    alt={repo.owner.login}
+                    width={32}
+                    height={32}
+                    className="rounded-full border border-blue-800"
+                  />
+                  <div>
+                    <CardTitle className="text-base font-semibold text-blue-200">
+                      <span className="hover:underline">
+                        {repo.fullName}
+                      </span>
+                    </CardTitle>
+                    <span className="text-xs text-cyan-300">{repo.language}</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-neutral-200 mb-2 line-clamp-2 min-h-[40px]">{repo.description}</p>
+                  <div className="flex items-center gap-4 text-xs text-blue-300 mb-2">
+                    <span>⭐ {repo.stargazerCount.toLocaleString()}</span>
+                    <span>🍴 {repo.forkCount.toLocaleString()}</span>
+                  </div>
+                </CardContent>
+              </Link>
+              <CardContent className="pt-0">
                 <Button
                   size="sm"
                   variant={compareTray.find((r) => r.id === repo.id) ? "secondary" : "default"}
-                  onClick={() => handleAddToCompare(repo)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAddToCompare(repo);
+                  }}
                   disabled={!!compareTray.find((r) => r.id === repo.id)}
                   className="w-full"
                 >
