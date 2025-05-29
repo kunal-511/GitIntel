@@ -9,8 +9,7 @@ A Next.js application for analyzing competition in open source GitHub projects. 
 - ✅ Repository search and discovery
 - ✅ Trending repositories analysis
 - ✅ Repository statistics and metrics
-- ✅ Multi-repository comparison
-- ✅ Basic UI for interacting with the API (Search, Trending, Analytics, and Compare features)
+- ✅ Basic UI for interacting with the API (Search, Trending,In Depth Analytics)
 
 ## 🛠️ Tech Stack
 
