@@ -34,12 +34,37 @@ export default function LandingPage() {
   const [compareTray, setCompareTray] = useState<Repository[]>([]);
   const [trayOpen, setTrayOpen] = useState(false);
 
+  const parseSearchQuery = (query: string): string => {
+    const trimmedQuery = query.trim();
+    
+    if (trimmedQuery.includes(':')) return trimmedQuery;
+    
+    if (trimmedQuery.includes('/')) return trimmedQuery;
+    
+    const parts = trimmedQuery.split(/\s+/);
+    
+    if (parts.length === 2) {
+      const [firstPart, secondPart] = parts;
+      if (firstPart.length > 0 && secondPart.length > 0 && 
+          /^[a-zA-Z0-9_-]+$/.test(firstPart) && /^[a-zA-Z0-9_-]+$/.test(secondPart)) {
+        return `${firstPart}/${secondPart}`;
+      }
+    }
+    
+    if (parts.length === 1 && parts[0].length > 0 && !parts[0].includes('/')) {
+      return trimmedQuery;
+    }
+    
+    return trimmedQuery;
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/github/search?q=${encodeURIComponent(searchQuery)}&limit=10`);
+      const parsedQuery = parseSearchQuery(searchQuery);
+      const response = await fetch(`/api/github/search?q=${encodeURIComponent(parsedQuery)}&limit=10`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to search repositories");
       setRepositories(data.repositories);
@@ -87,7 +112,7 @@ export default function LandingPage() {
               type="text"
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              placeholder="Search repositories (e.g., react, language:python)"
+              placeholder="Search by name, org/repo, or org repo format"
               className="w-full sm:w-80 bg-white"
               onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handleSearch()}
             />
