@@ -53,6 +53,22 @@ export interface Repository {
     name: string;
     key: string;
   } | null;
+  beginnerIssues?: {
+    totalCount: number;
+    nodes: Array<{
+      id: string;
+      number: number;
+      title: string;
+      url: string;
+      createdAt: string;
+      labels: {
+        nodes: Array<{
+          name: string;
+          color: string;
+        }>;
+      };
+    }>;
+  };
 }
 
 export interface RepositoryStats {
@@ -71,6 +87,22 @@ export interface RepositoryStats {
   commits: {
     total: number;
     lastMonth: number;
+  };
+  beginnerIssues?: {
+    totalCount: number;
+    nodes: Array<{
+      id: string;
+      number: number;
+      title: string;
+      url: string;
+      createdAt: string;
+      labels: {
+        nodes: Array<{
+          name: string;
+          color: string;
+        }>;
+      };
+    }>;
   };
 }
 
@@ -126,19 +158,40 @@ export interface RiskAssessment {
 
 export interface AdvancedAnalytics {
   repository: Repository;
-  historical: HistoricalData[];
-  contributors: ContributorData[];
-  technologyStack: TechnologyStack;
-  riskAssessment: RiskAssessment;
-  trends: {
-    starsGrowth: number;
-    forksGrowth: number;
-    contributorsGrowth: number;
-    commitActivity: number;
+  contributors: number;
+  releases: number;
+  issues: {
+    open: number;
+    closed: number;
+  };
+  pullRequests: {
+    open: number;
+    closed: number;
+    merged: number;
+  };
+  commits: {
+    total: number;
+    lastMonth: number;
+  };
+  beginnerIssues?: {
+    totalCount: number;
+    nodes: Array<{
+      id: string;
+      number: number;
+      title: string;
+      url: string;
+      createdAt: string;
+      labels: {
+        nodes: Array<{
+          name: string;
+          color: string;
+        }>;
+      };
+    }>;
   };
 }
 
- export interface ContributorCommitData {
+export interface ContributorCommitData {
   week: string; // ISO date string for the week
   commits: number;
   additions: number;
@@ -231,6 +284,26 @@ export const REPOSITORY_QUERY = `
       issues(states: [OPEN]) {
         totalCount
       }
+      beginnerIssues: issues(states: [OPEN], first: 100) {
+        totalCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          number
+          title
+          url
+          createdAt
+          labels(first: 10) {
+            nodes {
+              name
+              color
+            }
+          }
+        }
+      }
       closedIssues: issues(states: [CLOSED]) {
         totalCount
       }
@@ -308,6 +381,26 @@ export const SEARCH_REPOSITORIES_QUERY = `
             name
             key
           }
+          beginnerIssues: issues(states: [OPEN], first: 100) {
+            totalCount
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              id
+              number
+              title
+              url
+              createdAt
+              labels(first: 10) {
+                nodes {
+                  name
+                  color
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -358,27 +451,8 @@ export class GitHubService {
         } else {
           contributorsCount = contributorsResponse.data.length;
         }
-      } catch (contributorsError) {
-        console.warn('Could not fetch contributors count (using fallback):', contributorsError instanceof Error ? contributorsError.message : 'Unknown error');
-        
-        // Try alternative approach using GraphQL if REST fails
-        try {
-          const contributorsGraphQL = await getGitHubGraphQL()(
-            `query GetContributors($owner: String!, $name: String!) {
-              repository(owner: $owner, name: $name) {
-                mentionableUsers(first: 1) {
-                  totalCount
-                }
-              }
-            }`,
-            { owner, name }
-          ) as { repository?: { mentionableUsers?: { totalCount: number } } };
-          
-          contributorsCount = contributorsGraphQL.repository?.mentionableUsers?.totalCount || 0;
-        } catch {
-          console.warn('GraphQL contributors fallback also failed, defaulting to 0');
-          contributorsCount = 0; // Final fallback
-        }
+      } catch (error) {
+        console.warn('Failed to get contributors count:', error);
       }
       
       return {
@@ -407,6 +481,7 @@ export class GitHubService {
             name: repo.licenseInfo.name,
             key: repo.licenseInfo.key,
           } : null,
+          beginnerIssues: repo.beginnerIssues,
         },
         contributors: contributorsCount,
         releases: repo.releases.totalCount,
@@ -423,6 +498,7 @@ export class GitHubService {
           total: repo.defaultBranchRef?.target?.history?.totalCount || 0,
           lastMonth: repo.defaultBranchRef?.target?.historyLastMonth?.totalCount || 0,
         },
+        beginnerIssues: repo.beginnerIssues,
       };
     } catch (error) {
       console.error('Error fetching repository stats:', error);
@@ -478,6 +554,7 @@ export class GitHubService {
             name: repo.licenseInfo.name,
             key: repo.licenseInfo.key,
           } : null,
+          beginnerIssues: repo.beginnerIssues,
         })),
         totalCount: search.repositoryCount,
         hasNextPage: search.pageInfo.hasNextPage,
@@ -817,34 +894,16 @@ export class GitHubService {
    */
   static async getAdvancedAnalytics(owner: string, name: string): Promise<AdvancedAnalytics> {
     try {
-      // Get basic repository data
       const basicStats = await this.getRepositoryStats(owner, name);
       
-      // Get advanced data in parallel
-      const [historical, contributors, technologyStack] = await Promise.all([
-        this.getHistoricalData(owner, name),
-        this.getContributorAnalysis(owner, name),
-        this.getTechnologyStack(owner, name)
-      ]);
-
-      // Get risk assessment (depends on contributors data)
-      const riskAssessment = await this.getRiskAssessment(owner, name, contributors);
-
-      // Calculate trends
-      const trends = {
-        starsGrowth: calculateGrowthRate(historical, 'stars'),
-        forksGrowth: calculateGrowthRate(historical, 'forks'),
-        contributorsGrowth: contributors.length > 0 ? 5 : 0, // Simplified
-        commitActivity: calculateGrowthRate(historical, 'commits')
-      };
-
       return {
         repository: basicStats.repository,
-        historical,
-        contributors,
-        technologyStack,
-        riskAssessment,
-        trends
+        contributors: basicStats.contributors,
+        releases: basicStats.releases,
+        issues: basicStats.issues,
+        pullRequests: basicStats.pullRequests,
+        commits: basicStats.commits,
+        beginnerIssues: basicStats.beginnerIssues,
       };
     } catch (error) {
       console.error('Error fetching advanced analytics:', error);
