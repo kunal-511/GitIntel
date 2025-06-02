@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Star, GitFork, Users, TrendingUp, AlertTriangle, Code, Activity, Shield, HandHelping } from "lucide-react";
+import {  Star, GitFork, Users, TrendingUp, AlertTriangle, Code, Activity, Shield, HandHelping } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -18,19 +18,6 @@ import { BeginnerIssues } from "@/components/github/BeginnerIssues";
 
 import { Repository, HistoricalData, ContributorData, TechnologyStack, RiskAssessment as RiskAssessmentType } from "@/lib/github";
 
-interface BeginnerIssue {
-  id: string;
-  number: number;
-  title: string;
-  url: string;
-  createdAt: string;
-  labels: {
-    nodes: Array<{
-      name: string;
-      color: string;
-    }>;
-  };
-}
 
 interface CompetitiveAnalysis {
   targetRepository: {
@@ -118,7 +105,7 @@ interface ExtendedAnalytics {
 }
 
 // Helper function to check if repository has beginner-friendly issues
-function hasBeginnersIssues(repository: any): boolean {
+function hasBeginnersIssues(repository: Repository): boolean {
   if (!repository?.beginnerIssues?.nodes?.length) {
     return false;
   }
@@ -145,10 +132,10 @@ function hasBeginnersIssues(repository: any): boolean {
     'trivial',
   ];
   
-  return repository.beginnerIssues.nodes.some((issue: any) => {
+  return repository.beginnerIssues.nodes.some((issue) => {
     if (!issue.labels?.nodes?.length) return false;
     
-    return issue.labels.nodes.some((label: any) => {
+    return issue.labels.nodes.some((label) => {
       const labelName = label.name.toLowerCase();
       return BEGINNER_LABEL_KEYWORDS.some(keyword => 
         labelName.includes(keyword.toLowerCase())

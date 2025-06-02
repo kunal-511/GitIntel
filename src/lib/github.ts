@@ -427,7 +427,7 @@ export class GitHubService {
         const restClient = getGitHubRest();
         
         // Create a timeout promise
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('Contributors request timeout')), 5000); // 5 second timeout
         });
         
@@ -439,7 +439,7 @@ export class GitHubService {
             per_page: 1
           }),
           timeoutPromise
-        ]) as { data: any[]; headers: { link?: string } };
+        ]) as { data: unknown[]; headers: { link?: string } };
         
         // GitHub returns the total count in the Link header for pagination
         const linkHeader = contributorsResponse.headers.link;
@@ -451,8 +451,27 @@ export class GitHubService {
         } else {
           contributorsCount = contributorsResponse.data.length;
         }
-      } catch (error) {
-        console.warn('Failed to get contributors count:', error);
+      } catch (contributorsError) {
+        console.warn('Could not fetch contributors count (using fallback):', contributorsError instanceof Error ? contributorsError.message : 'Unknown error');
+        
+        // Try alternative approach using GraphQL if REST fails
+        try {
+          const contributorsGraphQL = await getGitHubGraphQL()(
+            `query GetContributors($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                mentionableUsers(first: 1) {
+                  totalCount
+                }
+              }
+            }`,
+            { owner, name }
+          ) as { repository?: { mentionableUsers?: { totalCount: number } } };
+          
+          contributorsCount = contributorsGraphQL.repository?.mentionableUsers?.totalCount || 0;
+        } catch {
+          console.warn('GraphQL contributors fallback also failed, defaulting to 0');
+          contributorsCount = 0; // Final fallback
+        }
       }
       
       return {
@@ -1302,16 +1321,16 @@ function detectFrameworks(languages: Array<{ name: string }>, dependencies: Arra
   return Array.from(frameworks);
 }
 
-function calculateGrowthRate(historical: HistoricalData[], field: keyof HistoricalData): number {
-  if (historical.length < 2) return 0;
+// function calculateGrowthRate(historical: HistoricalData[], field: keyof HistoricalData): number {
+//   if (historical.length < 2) return 0;
   
-  const recent = historical.slice(-3); // Last 3 months
-  const older = historical.slice(-6, -3); // Previous 3 months
+//   const recent = historical.slice(-3); // Last 3 months
+//   const older = historical.slice(-6, -3); // Previous 3 months
   
-  const recentAvg = recent.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / recent.length;
-  const olderAvg = older.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / older.length;
+//   const recentAvg = recent.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / recent.length;
+//   const olderAvg = older.reduce((sum, item) => sum + (Number(item[field]) || 0), 0) / older.length;
   
-  if (olderAvg === 0) return recentAvg > 0 ? 100 : 0;
+//   if (olderAvg === 0) return recentAvg > 0 ? 100 : 0;
   
-  return Math.round(((recentAvg - olderAvg) / olderAvg) * 100);
-} 
+//   return Math.round(((recentAvg - olderAvg) / olderAvg) * 100);
+// } 
