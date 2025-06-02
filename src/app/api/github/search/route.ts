@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         });
       } catch (repoError) {
         console.log(`Repository ${normalizedQuery} not found directly, falling back to search`);
+        console.error(repoError);
       }
     }
     
