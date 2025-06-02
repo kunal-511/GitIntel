@@ -42,22 +42,6 @@ export interface GitHubRepositoryResponse {
     issues: {
       totalCount: number;
     };
-    beginnerIssues: {
-      totalCount: number;
-      nodes: Array<{
-        id: string;
-        number: number;
-        title: string;
-        url: string;
-        createdAt: string;
-        labels: {
-          nodes: Array<{
-            name: string;
-            color: string;
-          }>;
-        };
-      }>;
-    };
     closedIssues: {
       totalCount: number;
     };
@@ -125,22 +109,6 @@ export interface GitHubSearchResponse {
         name: string;
         key: string;
       } | null;
-      beginnerIssues: {
-        totalCount: number;
-        nodes: Array<{
-          id: string;
-          number: number;
-          title: string;
-          url: string;
-          createdAt: string;
-          labels: {
-            nodes: Array<{
-              name: string;
-              color: string;
-            }>;
-          };
-        }>;
-      };
     }>;
   };
 } 
