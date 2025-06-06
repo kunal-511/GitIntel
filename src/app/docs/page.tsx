@@ -26,9 +26,9 @@ export default function DocsPage() {
                 <h3 className="font-semibold">Beginner-Friendly Issues</h3>
               </div>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Automatically detects "good first issue" labeled issues</li>
-                <li>• Supports 19+ beginner-friendly label variations</li>
-                <li>• Direct GitHub integration with issue links</li>
+                <li>&bull; Automatically detects &quot;good first issue&quot; labeled issues</li>
+                <li>&bull; Supports 19+ beginner-friendly label variations</li>
+                <li>&bull; Direct GitHub integration with issue links</li>
               </ul>
             </div>
 
@@ -38,11 +38,11 @@ export default function DocsPage() {
                 <h3 className="font-semibold">Repository Analytics</h3>
               </div>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Deep repository statistics and metrics</li>
-                <li>• Technology stack analysis</li>
-                <li>• Risk assessment and health scoring</li>
-                <li>• Real-time data from GitHub API</li>
-                <li>• Comprehensive search and discovery</li>
+                <li>&bull; Deep repository statistics and metrics</li>
+                <li>&bull; Technology stack analysis</li>
+                <li>&bull; Risk assessment and health scoring</li>
+                <li>&bull; Real-time data from GitHub API</li>
+                <li>&bull; Comprehensive search and discovery</li>
               </ul>
             </div>
 
@@ -52,25 +52,25 @@ export default function DocsPage() {
                 <h3 className="font-semibold">Contributor Insights</h3>
               </div>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Detailed contributor analysis</li>
-                <li>• Commit history and activity tracking</li>
-                <li>• Active vs. inactive contributor identification</li>
-                <li>• Weekly contribution patterns</li>
-                <li>• Top contributor rankings</li>
+                <li>&bull; Detailed contributor analysis</li>
+                <li>&bull; Commit history and activity tracking</li>
+                <li>&bull; Active vs. inactive contributor identification</li>
+                <li>&bull; Weekly contribution patterns</li>
+                <li>&bull; Top contributor rankings</li>
               </ul>
             </div>
 
             <div className="bg-card rounded-lg p-6 border">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="h-5 w-5 text-orange-500" />
-                <h3 className="font-semibold">Growth & Trends</h3>
+                <h3 className="font-semibold">Growth &amp; Trends</h3>
               </div>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Historical growth visualization</li>
-                <li>• Trending repositories by technology</li>
-                <li>• Competitive analysis and positioning</li>
-                <li>• Growth trend calculations</li>
-                <li>• Market insights and comparisons</li>
+                <li>&bull; Historical growth visualization</li>
+                <li>&bull; Trending repositories by technology</li>
+                <li>&bull; Competitive analysis and positioning</li>
+                <li>&bull; Growth trend calculations</li>
+                <li>&bull; Market insights and comparisons</li>
               </ul>
             </div>
           </div>
@@ -91,15 +91,15 @@ export default function DocsPage() {
               <div className="bg-muted p-3 rounded-md">
                 <h4 className="text-sm font-medium mb-2">Supported Label Keywords:</h4>
                 <div className="text-xs text-muted-foreground grid grid-cols-2 md:grid-cols-3 gap-1">
-                  <span>• good first issue</span>
-                  <span>• beginner</span>
-                  <span>• help wanted</span>
-                  <span>• starter</span>
-                  <span>• easy</span>
-                  <span>• first-timer</span>
-                  <span>• up-for-grabs</span>
-                  <span>• new contributor</span>
-                  <span>• entry level</span>
+                  <span>&bull; good first issue</span>
+                  <span>&bull; beginner</span>
+                  <span>&bull; help wanted</span>
+                  <span>&bull; starter</span>
+                  <span>&bull; easy</span>
+                  <span>&bull; first-timer</span>
+                  <span>&bull; up-for-grabs</span>
+                  <span>&bull; new contributor</span>
+                  <span>&bull; entry level</span>
                 </div>
               </div>
             </div>
@@ -107,11 +107,11 @@ export default function DocsPage() {
             <div className="bg-card rounded-lg p-4 border">
               <h3 className="font-medium mb-2">Accessing Beginner Issues</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                <li>Navigate to any repository's analytics page</li>
-                <li>Look for the "Beginner Issues" button in the repository header</li>
+                <li>Navigate to any repository&apos;s analytics page</li>
+                <li>Look for the &quot;Beginner Issues&quot; button in the repository header</li>
                 <li>Click to open the responsive drawer from the right side</li>
                 <li>Browse issues with full context including labels and creation dates</li>
-                <li>Click "View on GitHub" to open issues directly</li>
+                <li>Click &quot;View on GitHub&quot; to open issues directly</li>
               </ol>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function DocsPage() {
               </ul>
             </div>
             <div className="bg-card rounded-lg p-4 border">
-              <h3 className="font-medium mb-2">APIs & Integration</h3>
+              <h3 className="font-medium mb-2">APIs &amp; Integration</h3>
               <ul className="space-y-1 text-muted-foreground">
                 <li>GitHub GraphQL API</li>
                 <li>GitHub REST API (Octokit)</li>
