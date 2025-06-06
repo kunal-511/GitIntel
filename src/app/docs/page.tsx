@@ -1,4 +1,4 @@
-import { Rocket, Code2, Wrench } from 'lucide-react';
+import { Rocket, Code2, Wrench, Users, Target, TrendingUp, Search } from 'lucide-react';
 
 export default function DocsPage() {
   return (
@@ -8,23 +8,113 @@ export default function DocsPage() {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold">GitIntel Documentation</h1>
           <p className="text-lg text-muted-foreground">
-            A passion project for analyzing GitHub repositories and understanding open source trends
+            A comprehensive platform for analyzing GitHub repositories, discovering beginner-friendly issues, and understanding open source trends
           </p>
         </div>
 
         {/* Features Section */}
-        <section className="space-y-4">
+        <section className="space-y-6">
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <Rocket className="h-6 w-6" />
-            Current Features
+            Features Overview
           </h2>
-          <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-            <li>GitHub API integration with GraphQL and REST</li>
-            <li>Repository search and discovery</li>
-            <li>Trending repositories analysis</li>
-            <li>Repository statistics and metrics</li>
-            <li>Interactive UI for repository analytics</li>
-          </ul>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-card rounded-lg p-6 border">
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="h-5 w-5 text-green-500" />
+                <h3 className="font-semibold">Beginner-Friendly Issues</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Automatically detects "good first issue" labeled issues</li>
+                <li>• Supports 19+ beginner-friendly label variations</li>
+                <li>• Direct GitHub integration with issue links</li>
+              </ul>
+            </div>
+
+            <div className="bg-card rounded-lg p-6 border">
+              <div className="flex items-center gap-2 mb-3">
+                <Search className="h-5 w-5 text-blue-500" />
+                <h3 className="font-semibold">Repository Analytics</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Deep repository statistics and metrics</li>
+                <li>• Technology stack analysis</li>
+                <li>• Risk assessment and health scoring</li>
+                <li>• Real-time data from GitHub API</li>
+                <li>• Comprehensive search and discovery</li>
+              </ul>
+            </div>
+
+            <div className="bg-card rounded-lg p-6 border">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-5 w-5 text-purple-500" />
+                <h3 className="font-semibold">Contributor Insights</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Detailed contributor analysis</li>
+                <li>• Commit history and activity tracking</li>
+                <li>• Active vs. inactive contributor identification</li>
+                <li>• Weekly contribution patterns</li>
+                <li>• Top contributor rankings</li>
+              </ul>
+            </div>
+
+            <div className="bg-card rounded-lg p-6 border">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-5 w-5 text-orange-500" />
+                <h3 className="font-semibold">Growth & Trends</h3>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Historical growth visualization</li>
+                <li>• Trending repositories by technology</li>
+                <li>• Competitive analysis and positioning</li>
+                <li>• Growth trend calculations</li>
+                <li>• Market insights and comparisons</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* Beginner Issues Guide */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <Target className="h-6 w-6 text-green-500" />
+            Using Beginner-Friendly Issues
+          </h2>
+          <div className="space-y-4">
+            <div className="bg-card rounded-lg p-4 border">
+              <h3 className="font-medium mb-2">How It Works</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                GitIntel automatically scans repository issues for beginner-friendly labels and presents them in an easy-to-browse interface.
+              </p>
+              <div className="bg-muted p-3 rounded-md">
+                <h4 className="text-sm font-medium mb-2">Supported Label Keywords:</h4>
+                <div className="text-xs text-muted-foreground grid grid-cols-2 md:grid-cols-3 gap-1">
+                  <span>• good first issue</span>
+                  <span>• beginner</span>
+                  <span>• help wanted</span>
+                  <span>• starter</span>
+                  <span>• easy</span>
+                  <span>• first-timer</span>
+                  <span>• up-for-grabs</span>
+                  <span>• new contributor</span>
+                  <span>• entry level</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-card rounded-lg p-4 border">
+              <h3 className="font-medium mb-2">Accessing Beginner Issues</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                <li>Navigate to any repository's analytics page</li>
+                <li>Look for the "Beginner Issues" button in the repository header</li>
+                <li>Click to open the responsive drawer from the right side</li>
+                <li>Browse issues with full context including labels and creation dates</li>
+                <li>Click "View on GitHub" to open issues directly</li>
+              </ol>
+            </div>
+          </div>
         </section>
 
         {/* Tech Stack */}
@@ -35,19 +125,23 @@ export default function DocsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card rounded-lg p-4 border">
-              <h3 className="font-medium mb-2">Core</h3>
+              <h3 className="font-medium mb-2">Frontend</h3>
               <ul className="space-y-1 text-muted-foreground">
                 <li>Next.js 15 with App Router</li>
-                <li>TypeScript</li>
-                <li>Tailwind CSS</li>
+                <li>TypeScript for type safety</li>
+                <li>Tailwind CSS for styling</li>
+                <li>shadcn/ui component library</li>
+                <li>Recharts for data visualization</li>
               </ul>
             </div>
             <div className="bg-card rounded-lg p-4 border">
-              <h3 className="font-medium mb-2">APIs & Tools</h3>
+              <h3 className="font-medium mb-2">APIs & Integration</h3>
               <ul className="space-y-1 text-muted-foreground">
-                <li>GitHub API (Octokit)</li>
-                <li>GraphQL + REST</li>
-                <li>pnpm package manager</li>
+                <li>GitHub GraphQL API</li>
+                <li>GitHub REST API (Octokit)</li>
+                <li>Real-time data fetching</li>
+                <li>Robust error handling</li>
+                <li>Request timeout management</li>
               </ul>
             </div>
           </div>

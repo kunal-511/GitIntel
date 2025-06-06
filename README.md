@@ -9,7 +9,39 @@ A Next.js application for analyzing competition in open source GitHub projects. 
 - ✅ Repository search and discovery
 - ✅ Trending repositories analysis
 - ✅ Repository statistics and metrics
-- ✅ Basic UI for interacting with the API (Search, Trending,In Depth Analytics)
+- ✅ **Beginner-friendly issues discovery** - Find "good first issue" labeled issues in repositories
+- ✅ Advanced repository analytics with risk assessment
+- ✅ Technology stack analysis and language distribution
+- ✅ Contributor insights and commit activity tracking
+- ✅ Comprehensive UI for repository exploration and analysis
+
+### Key Features
+
+#### 🔍 **Repository Analysis**
+- Deep dive analytics for any GitHub repository
+- Real-time statistics including stars, forks, issues, and PRs
+- Technology stack detection and dependency analysis
+- Risk assessment based on maintenance activity and contributor diversity
+
+#### 👥 **Contributor Insights**
+- Detailed contributor analysis with commit history
+- Active vs. inactive contributor identification
+- Weekly commit activity tracking
+- Top contributor rankings and statistics
+
+#### 🎯 **Beginner-Friendly Issues**
+- Automatically detects issues labeled with beginner-friendly keywords
+- Supports multiple label variations: "good first issue", "beginner", "help wanted", etc.
+- Mobile-responsive drawer interface sliding in from the right
+- Direct links to GitHub issues with full context
+- Issue filtering and sorting by creation date
+
+
+#### 📈 **Growth Tracking**
+- Historical data visualization for stars, forks, and commits
+- Growth trend calculations and projections
+- Monthly activity breakdowns
+- Commit activity statistics
 
 ## 🛠️ Tech Stack
 
