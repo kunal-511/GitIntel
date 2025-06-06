@@ -158,7 +158,7 @@ export interface RiskAssessment {
 
 export interface AdvancedAnalytics {
   repository: Repository;
-  contributors: number;
+  contributors: ContributorData[];
   releases: number;
   issues: {
     open: number;
@@ -188,6 +188,15 @@ export interface AdvancedAnalytics {
         }>;
       };
     }>;
+  };
+  historical: HistoricalData[];
+  technologyStack: TechnologyStack;
+  riskAssessment: RiskAssessment;
+  trends: {
+    starsGrowth: number;
+    forksGrowth: number;
+    contributorsGrowth: number;
+    commitActivity: number;
   };
 }
 
@@ -414,10 +423,21 @@ export class GitHubService {
    */
   static async getRepositoryStats(owner: string, name: string): Promise<RepositoryStats> {
     try {
-      const response = await getGitHubGraphQL()(REPOSITORY_QUERY, {
+      // Add timeout to GraphQL request
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('GraphQL request timeout')), 15000); // 15 second timeout
+      });
+
+      const graphqlPromise = getGitHubGraphQL()(REPOSITORY_QUERY, {
         owner,
         name,
-      }) as GitHubRepositoryResponse;
+      }) as Promise<GitHubRepositoryResponse>;
+
+      const response = await Promise.race([graphqlPromise, timeoutPromise]);
+
+      if (!response?.repository) {
+        throw new Error(`Repository ${owner}/${name} not found`);
+      }
 
       const repo = response.repository;
       
@@ -428,7 +448,7 @@ export class GitHubService {
         
         // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Contributors request timeout')), 5000); // 5 second timeout
+          setTimeout(() => reject(new Error('Contributors request timeout')), 8000); // 8 second timeout
         });
         
         // Race between the API call and timeout
@@ -456,16 +476,21 @@ export class GitHubService {
         
         // Try alternative approach using GraphQL if REST fails
         try {
-          const contributorsGraphQL = await getGitHubGraphQL()(
-            `query GetContributors($owner: String!, $name: String!) {
-              repository(owner: $owner, name: $name) {
-                mentionableUsers(first: 1) {
-                  totalCount
+          const contributorsGraphQL = await Promise.race([
+            getGitHubGraphQL()(
+              `query GetContributors($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                  mentionableUsers(first: 1) {
+                    totalCount
+                  }
                 }
-              }
-            }`,
-            { owner, name }
-          ) as { repository?: { mentionableUsers?: { totalCount: number } } };
+              }`,
+              { owner, name }
+            ),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('GraphQL contributors timeout')), 5000)
+            )
+          ]) as { repository?: { mentionableUsers?: { totalCount: number } } };
           
           contributorsCount = contributorsGraphQL.repository?.mentionableUsers?.totalCount || 0;
         } catch {
@@ -481,20 +506,20 @@ export class GitHubService {
           fullName: repo.nameWithOwner,
           description: repo.description,
           url: repo.url,
-          stargazerCount: repo.stargazerCount,
-          forkCount: repo.forkCount,
-          watcherCount: repo.watchers.totalCount,
+          stargazerCount: repo.stargazerCount || 0,
+          forkCount: repo.forkCount || 0,
+          watcherCount: repo.watchers?.totalCount || 0,
           language: repo.primaryLanguage?.name || null,
-          topics: repo.repositoryTopics.nodes.map((node) => node.topic.name),
+          topics: repo.repositoryTopics?.nodes?.map((node) => node.topic.name) || [],
           createdAt: repo.createdAt,
           updatedAt: repo.updatedAt,
           pushedAt: repo.pushedAt,
-          isArchived: repo.isArchived,
-          isPrivate: repo.isPrivate,
+          isArchived: repo.isArchived || false,
+          isPrivate: repo.isPrivate || false,
           owner: {
             login: repo.owner.login,
-            type: repo.owner.__typename,
-            avatarUrl: repo.owner.avatarUrl,
+            type: repo.owner.__typename || 'User',
+            avatarUrl: repo.owner.avatarUrl || '',
           },
           license: repo.licenseInfo ? {
             name: repo.licenseInfo.name,
@@ -503,15 +528,15 @@ export class GitHubService {
           beginnerIssues: repo.beginnerIssues,
         },
         contributors: contributorsCount,
-        releases: repo.releases.totalCount,
+        releases: repo.releases?.totalCount || 0,
         issues: {
-          open: repo.issues.totalCount,
-          closed: repo.closedIssues.totalCount,
+          open: repo.issues?.totalCount || 0,
+          closed: repo.closedIssues?.totalCount || 0,
         },
         pullRequests: {
-          open: repo.pullRequests.totalCount,
-          closed: repo.closedPullRequests.totalCount,
-          merged: repo.mergedPullRequests.totalCount,
+          open: repo.pullRequests?.totalCount || 0,
+          closed: repo.closedPullRequests?.totalCount || 0,
+          merged: repo.mergedPullRequests?.totalCount || 0,
         },
         commits: {
           total: repo.defaultBranchRef?.target?.history?.totalCount || 0,
@@ -521,7 +546,13 @@ export class GitHubService {
       };
     } catch (error) {
       console.error('Error fetching repository stats:', error);
-      throw new Error(`Failed to fetch repository stats for ${owner}/${name}`);
+      
+      // If GraphQL fails completely, try the minimal fallback
+      if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('not found'))) {
+        throw error; // Re-throw specific errors
+      }
+      
+      throw new Error(`Failed to fetch repository stats for ${owner}/${name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -913,20 +944,224 @@ export class GitHubService {
    */
   static async getAdvancedAnalytics(owner: string, name: string): Promise<AdvancedAnalytics> {
     try {
+      // Get basic repository stats with enhanced error handling
       const basicStats = await this.getRepositoryStats(owner, name);
       
+      // Fetch additional data with individual error handling
+      const [historicalData, contributorData, technologyStack, riskAssessment] = await Promise.allSettled([
+        this.getHistoricalData(owner, name).catch(error => {
+          console.warn('Failed to fetch historical data:', error);
+          return [];
+        }),
+        this.getContributorAnalysis(owner, name).catch(error => {
+          console.warn('Failed to fetch contributor analysis:', error);
+          return [];
+        }),
+        this.getTechnologyStack(owner, name).catch(error => {
+          console.warn('Failed to fetch technology stack:', error);
+          return { languages: [], dependencies: [], frameworks: [] };
+        }),
+        this.getRiskAssessment(owner, name, []).catch(error => {
+          console.warn('Failed to fetch risk assessment:', error);
+          return {
+            busFactor: { score: 0, level: 'medium' as const, topContributors: 0, description: 'Unable to assess' },
+            maintenanceStatus: { score: 0, level: 'moderate' as const, lastCommit: '', avgCommitsPerMonth: 0, description: 'Unable to assess' },
+            communityHealth: { score: 0, level: 'moderate' as const, factors: [] }
+          };
+        })
+      ]);
+
+      // Extract results with fallbacks
+      const historical = historicalData.status === 'fulfilled' ? historicalData.value : [];
+      const contributors = contributorData.status === 'fulfilled' ? contributorData.value : [];
+      const techStack = technologyStack.status === 'fulfilled' ? technologyStack.value : { languages: [], dependencies: [], frameworks: [] };
+      const risk = riskAssessment.status === 'fulfilled' ? riskAssessment.value : {
+        busFactor: { score: 0, level: 'medium' as const, topContributors: 0, description: 'Unable to assess' },
+        maintenanceStatus: { score: 0, level: 'moderate' as const, lastCommit: '', avgCommitsPerMonth: 0, description: 'Unable to assess' },
+        communityHealth: { score: 0, level: 'moderate' as const, factors: [] }
+      };
+
+      // Calculate trends with fallbacks
+      const trends = this.calculateTrends(historical);
+
       return {
         repository: basicStats.repository,
-        contributors: basicStats.contributors,
+        contributors: contributors,
         releases: basicStats.releases,
         issues: basicStats.issues,
         pullRequests: basicStats.pullRequests,
         commits: basicStats.commits,
         beginnerIssues: basicStats.beginnerIssues,
+        historical,
+        technologyStack: techStack,
+        riskAssessment: risk,
+        trends
       };
     } catch (error) {
       console.error('Error fetching advanced analytics:', error);
-      throw new Error(`Failed to fetch advanced analytics for ${owner}/${name}`);
+      
+      // If basic stats fail, try to provide minimal data
+      try {
+        const minimalStats = await this.getMinimalRepositoryData(owner, name);
+        return {
+          repository: minimalStats,
+          contributors: [],
+          releases: 0,
+          issues: { open: 0, closed: 0 },
+          pullRequests: { open: 0, closed: 0, merged: 0 },
+          commits: { total: 0, lastMonth: 0 },
+          beginnerIssues: undefined,
+          historical: [],
+          technologyStack: { languages: [], dependencies: [], frameworks: [] },
+          riskAssessment: {
+            busFactor: { score: 0, level: 'medium', topContributors: 0, description: 'Unable to assess' },
+            maintenanceStatus: { score: 0, level: 'moderate', lastCommit: '', avgCommitsPerMonth: 0, description: 'Unable to assess' },
+            communityHealth: { score: 0, level: 'moderate', factors: [] }
+          },
+          trends: { starsGrowth: 0, forksGrowth: 0, contributorsGrowth: 0, commitActivity: 0 }
+        };
+      } catch (minimalError) {
+        console.error('Even minimal data fetch failed:', minimalError);
+        throw new Error(`Failed to fetch any data for ${owner}/${name}. Repository may not exist or be inaccessible.`);
+      }
+    }
+  }
+
+  /**
+   * Calculate trends from historical data with fallbacks
+   */
+  private static calculateTrends(historical: HistoricalData[]): { starsGrowth: number; forksGrowth: number; contributorsGrowth: number; commitActivity: number } {
+    try {
+      if (historical.length < 2) {
+        return { starsGrowth: 0, forksGrowth: 0, contributorsGrowth: 0, commitActivity: 0 };
+      }
+
+      const recent = historical.slice(-3); // Last 3 months
+      const previous = historical.slice(-6, -3); // Previous 3 months
+
+      const recentAvg = {
+        stars: recent.reduce((sum, d) => sum + d.stars, 0) / recent.length,
+        forks: recent.reduce((sum, d) => sum + d.forks, 0) / recent.length,
+        commits: recent.reduce((sum, d) => sum + d.commits, 0) / recent.length
+      };
+
+      const previousAvg = {
+        stars: previous.length > 0 ? previous.reduce((sum, d) => sum + d.stars, 0) / previous.length : 0,
+        forks: previous.length > 0 ? previous.reduce((sum, d) => sum + d.forks, 0) / previous.length : 0,
+        commits: previous.length > 0 ? previous.reduce((sum, d) => sum + d.commits, 0) / previous.length : 0
+      };
+
+      return {
+        starsGrowth: previousAvg.stars > 0 ? Math.round(((recentAvg.stars - previousAvg.stars) / previousAvg.stars) * 100) : 0,
+        forksGrowth: previousAvg.forks > 0 ? Math.round(((recentAvg.forks - previousAvg.forks) / previousAvg.forks) * 100) : 0,
+        contributorsGrowth: 0, // Would need more data to calculate
+        commitActivity: previousAvg.commits > 0 ? Math.round(((recentAvg.commits - previousAvg.commits) / previousAvg.commits) * 100) : 0
+      };
+    } catch (error) {
+      console.warn('Error calculating trends:', error);
+      return { starsGrowth: 0, forksGrowth: 0, contributorsGrowth: 0, commitActivity: 0 };
+    }
+  }
+
+  /**
+   * Get minimal repository data as fallback
+   */
+  private static async getMinimalRepositoryData(owner: string, name: string): Promise<Repository> {
+    try {
+      // Try a minimal GraphQL query first
+      const minimalQuery = `
+        query GetMinimalRepository($owner: String!, $name: String!) {
+          repository(owner: $owner, name: $name) {
+            id
+            name
+            nameWithOwner
+            description
+            url
+            stargazerCount
+            forkCount
+            watchers { totalCount }
+            primaryLanguage { name }
+            createdAt
+            updatedAt
+            pushedAt
+            isArchived
+            isPrivate
+            owner {
+              login
+              ... on User { avatarUrl }
+              ... on Organization { avatarUrl }
+            }
+          }
+        }
+      `;
+
+      const response = await getGitHubGraphQL()(minimalQuery, { owner, name }) as any;
+      const repo = response.repository;
+
+      return {
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.nameWithOwner,
+        description: repo.description,
+        url: repo.url,
+        stargazerCount: repo.stargazerCount || 0,
+        forkCount: repo.forkCount || 0,
+        watcherCount: repo.watchers?.totalCount || 0,
+        language: repo.primaryLanguage?.name || null,
+        topics: [],
+        createdAt: repo.createdAt,
+        updatedAt: repo.updatedAt,
+        pushedAt: repo.pushedAt,
+        isArchived: repo.isArchived || false,
+        isPrivate: repo.isPrivate || false,
+        owner: {
+          login: repo.owner.login,
+          type: repo.owner.__typename || 'User',
+          avatarUrl: repo.owner.avatarUrl || '',
+        },
+        license: null,
+        beginnerIssues: undefined
+      };
+    } catch (error) {
+      console.error('Minimal GraphQL query failed, trying REST API:', error);
+      
+      // Fallback to REST API
+      try {
+        const restClient = getGitHubRest();
+        const repoResponse = await restClient.repos.get({ owner, repo: name });
+        const repo = repoResponse.data;
+
+        return {
+          id: repo.id.toString(),
+          name: repo.name,
+          fullName: repo.full_name,
+          description: repo.description,
+          url: repo.html_url,
+          stargazerCount: repo.stargazers_count || 0,
+          forkCount: repo.forks_count || 0,
+          watcherCount: repo.watchers_count || 0,
+          language: repo.language,
+          topics: repo.topics || [],
+          createdAt: repo.created_at,
+          updatedAt: repo.updated_at,
+          pushedAt: repo.pushed_at,
+          isArchived: repo.archived || false,
+          isPrivate: repo.private || false,
+          owner: {
+            login: repo.owner.login,
+            type: repo.owner.type,
+            avatarUrl: repo.owner.avatar_url || '',
+          },
+          license: repo.license ? {
+            name: repo.license.name,
+            key: repo.license.key
+          } : null,
+          beginnerIssues: undefined
+        };
+      } catch (restError) {
+        console.error('REST API fallback also failed:', restError);
+        throw new Error(`Repository ${owner}/${name} not found or inaccessible`);
+      }
     }
   }
 

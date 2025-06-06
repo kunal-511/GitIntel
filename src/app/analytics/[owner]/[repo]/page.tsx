@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import {  Star, GitFork, Users, TrendingUp, AlertTriangle, Code, Activity, Shield, HandHelping } from "lucide-react";
+import {  Star, GitFork, Users, TrendingUp, AlertTriangle, Code, Activity, Shield } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -14,7 +14,7 @@ import GrowthChart from "@/components/charts/GrowthChart";
 import LanguageChart from "@/components/charts/LanguageChart";
 import ContributorChart from "@/components/charts/ContributorChart";
 import RiskAssessment from "@/components/analytics/RiskAssessment";
-import { BeginnerIssues } from "@/components/github/BeginnerIssues";
+import { BeginnerIssuesDrawer } from "@/components/github/BeginnerIssuesDrawer";
 
 import { Repository, HistoricalData, ContributorData, TechnologyStack, RiskAssessment as RiskAssessmentType } from "@/lib/github";
 
@@ -154,22 +154,52 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [competitiveAnalysis, setCompetitiveAnalysis] = useState<CompetitiveAnalysis | null>(null);
   const [loadingCompetitive, setLoadingCompetitive] = useState(false);
-  const [showBeginnerIssues, setShowBeginnerIssues] = useState(false);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/github/advanced-analytics?owner=${owner}&name=${repo}`);
+        setError(null); // Clear previous errors
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+        
+        const response = await fetch(`/api/github/advanced-analytics?owner=${owner}&name=${repo}`, {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch repository analytics");
+          // Handle specific error cases
+          if (response.status === 404) {
+            throw new Error(`Repository "${owner}/${repo}" not found or is private`);
+          } else if (response.status === 408) {
+            throw new Error("Request timed out. This repository might be very large. Please try again.");
+          } else if (response.status === 429) {
+            throw new Error("Too many requests. Please wait a moment and try again.");
+          } else {
+            throw new Error(data.error || "Failed to fetch repository analytics");
+          }
         }
         
         setAnalytics(data as ExtendedAnalytics);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            setError("Request timed out. Please try again.");
+          } else {
+            setError(err.message);
+          }
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+        console.error("Analytics fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -210,17 +240,29 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <div className="text-red-400 text-lg mb-2">Error loading analytics</div>
-          <div className="text-neutral-400">{error}</div>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-4"
-            variant="outline"
-          >
-            Try Again
-          </Button>
+          <div className="text-neutral-400 mb-4">{error}</div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="border-blue-800 text-blue-300 hover:bg-blue-900/30"
+            >
+              Try Again
+            </Button>
+            <Button 
+              onClick={() => window.history.back()} 
+              variant="ghost"
+              className="text-neutral-400 hover:text-neutral-200"
+            >
+              Go Back
+            </Button>
+          </div>
+          <div className="mt-4 text-xs text-neutral-500">
+            If the problem persists, the repository might be private, very large, or temporarily unavailable.
+          </div>
         </div>
       </div>
     );
@@ -273,27 +315,15 @@ export default function AnalyticsPage() {
               )}
             </div>
             
-            {hasBeginnerIssues && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto text-sm"
-                onClick={() => setShowBeginnerIssues(!showBeginnerIssues)}
-              >
-                <HandHelping size={16} className="flex-shrink-0" />
-                <span className="truncate">
-                  {showBeginnerIssues ? 'Hide' : 'Show'} Beginner Issues
-                </span>
-              </Button>
+            {hasBeginnerIssues && repository.beginnerIssues && (
+              <BeginnerIssuesDrawer 
+                issues={repository.beginnerIssues} 
+                repositoryName={repository.name}
+              />
             )}
           </div>
         </CardHeader>
       </Card>
-
-      {/* Beginner Issues Section */}
-      {showBeginnerIssues && repository.beginnerIssues && (
-        <BeginnerIssues issues={repository.beginnerIssues} />
-      )}
 
       {/* Tabs Navigation */}
       <Tabs defaultValue="overview" className="w-full">
