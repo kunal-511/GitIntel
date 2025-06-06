@@ -83,9 +83,9 @@ export default function LanguageChart({ data, height = 300 }: LanguageChartProps
         />
         <Legend 
           wrapperStyle={{ color: '#F3F4F6' }}
-          formatter={(value, entry: any) => (
-            <span style={{ color: entry.color }}>
-              {value} ({entry.payload?.percentage || 0}%)
+          formatter={(value, entry) => (
+            <span style={{ color: entry.color || '#8884d8' }}>
+              {value} ({(entry.payload as { percentage?: number })?.percentage || 0}%)
             </span>
           )}
         />
