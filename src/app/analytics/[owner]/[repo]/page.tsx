@@ -240,21 +240,26 @@ export default function AnalyticsPage() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       {/* Repository Header */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-4">
-          <Image
-            src={repository.owner.avatarUrl}
-            alt={repository.owner.login}
-            width={64}
-            height={64}
-            className="rounded-full border border-blue-800"
-          />
-          <div className="flex-1">
-            <CardTitle className="text-2xl font-bold text-blue-200">
-              {repository.fullName}
-            </CardTitle>
-            <p className="text-gray-400 mt-1">{repository.description}</p>
-            <div className="flex items-center gap-4 mt-2">
+      <Card className="overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Image
+              src={repository.owner.avatarUrl}
+              alt={repository.owner.login}
+              width={48}
+              height={48}
+              className="rounded-full border border-blue-800 flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg sm:text-2xl font-bold text-blue-200 break-words">
+                {repository.fullName}
+              </CardTitle>
+              <p className="text-gray-400 mt-1 text-sm sm:text-base line-clamp-2">{repository.description}</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 sm:mt-0 w-full sm:w-auto">
               <span className="flex items-center gap-1 text-yellow-400">
                 <Star size={16} /> {repository.stargazerCount.toLocaleString()}
               </span>
@@ -267,17 +272,21 @@ export default function AnalyticsPage() {
                 </Badge>
               )}
             </div>
+            
+            {hasBeginnerIssues && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto text-sm"
+                onClick={() => setShowBeginnerIssues(!showBeginnerIssues)}
+              >
+                <HandHelping size={16} className="flex-shrink-0" />
+                <span className="truncate">
+                  {showBeginnerIssues ? 'Hide' : 'Show'} Beginner Issues
+                </span>
+              </Button>
+            )}
           </div>
-          {hasBeginnerIssues && (
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={() => setShowBeginnerIssues(!showBeginnerIssues)}
-            >
-              <HandHelping size={16} />
-              {showBeginnerIssues ? 'Hide Beginner Issues' : 'Show Beginner Issues'}
-            </Button>
-          )}
         </CardHeader>
       </Card>
 
@@ -288,28 +297,62 @@ export default function AnalyticsPage() {
 
       {/* Tabs Navigation */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-neutral-900 border border-blue-900/40">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-blue-900/40">
-            <Activity className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="growth" className="data-[state=active]:bg-blue-900/40">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Growth
-          </TabsTrigger>
-          <TabsTrigger value="contributors" className="data-[state=active]:bg-blue-900/40">
-            <Users className="h-4 w-4 mr-2" />
-            Contributors
-          </TabsTrigger>
-          <TabsTrigger value="technology" className="data-[state=active]:bg-blue-900/40">
-            <Code className="h-4 w-4 mr-2" />
-            Tech Stack
-          </TabsTrigger>
-          <TabsTrigger value="risk" className="data-[state=active]:bg-blue-900/40">
-            <Shield className="h-4 w-4 mr-2" />
-            Risk Assessment
-          </TabsTrigger>
-        </TabsList>
+        <div 
+          className="relative overflow-x-auto" 
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none' 
+          }}
+        >
+          <TabsList 
+            className="w-full flex sm:grid sm:grid-cols-5 bg-neutral-900 border border-blue-900/40"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <TabsTrigger 
+              value="overview" 
+              className="flex-1 min-w-[4rem] px-3 py-3 sm:py-2 data-[state=active]:bg-blue-900/40 flex items-center justify-center whitespace-nowrap"
+              title="Overview"
+            >
+              <Activity className="h-5 w-5 sm:h-4 sm:w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="growth" 
+              className="flex-1 min-w-[4rem] px-3 py-3 sm:py-2 data-[state=active]:bg-blue-900/40 flex items-center justify-center whitespace-nowrap"
+              title="Growth"
+            >
+              <TrendingUp className="h-5 w-5 sm:h-4 sm:w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Growth</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="contributors" 
+              className="flex-1 min-w-[4rem] px-3 py-3 sm:py-2 data-[state=active]:bg-blue-900/40 flex items-center justify-center whitespace-nowrap"
+              title="Contributors"
+            >
+              <Users className="h-5 w-5 sm:h-4 sm:w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Contributors</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="technology" 
+              className="flex-1 min-w-[4rem] px-3 py-3 sm:py-2 data-[state=active]:bg-blue-900/40 flex items-center justify-center whitespace-nowrap"
+              title="Technology Stack"
+            >
+              <Code className="h-5 w-5 sm:h-4 sm:w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Tech</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="risk" 
+              className="flex-1 min-w-[4rem] px-3 py-3 sm:py-2 data-[state=active]:bg-blue-900/40 flex items-center justify-center whitespace-nowrap"
+              title="Risk Assessment"
+            >
+              <Shield className="h-5 w-5 sm:h-4 sm:w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Risk</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="text-xs text-blue-400/50 mt-1 text-center sm:hidden">
+          Swipe to see more tabs
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
