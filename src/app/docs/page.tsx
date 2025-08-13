@@ -169,7 +169,7 @@ pnpm install`}</code>
                 Create a .env.local file with your GitHub token:
               </p>
               <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-                <code>{`REPO_TOKEN=your_github_personal_access_token_here
+                <code>{`GITHUB_TOKEN=your_github_personal_access_token_here
 NEXT_PUBLIC_APP_NAME=GitIntel`}</code>
               </pre>
             </div>
