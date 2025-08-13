@@ -45,3 +45,6 @@ next-env.d.ts
 detaileplans.md
 detail.md
 
+
+/src/generated/prisma
+AUTH_SETUP.md
