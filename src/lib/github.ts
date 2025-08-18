@@ -4,9 +4,9 @@ import { GitHubRepositoryResponse, GitHubSearchResponse } from './github-types';
 
 // Initialize GitHub API clients lazily
 function getGitHubToken() {
-  const githubToken = process.env.REPO_TOKEN;
+  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('REPO_TOKEN environment variable is required');
+    throw new Error('GITHUB_TOKEN environment variable is required');
   }
   return githubToken;
 }
